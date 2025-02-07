@@ -5,6 +5,7 @@
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
+#include "hardware/timer.h"
 #include "ws2812.pio.h"
 #include "inc/ssd1306.h"
 #include "inc/font.h"
@@ -21,10 +22,13 @@
 #define WS2812_PIN 7
 #define NUM_PIXELS 25
 #define IS_RGBW false
+#define DEBOUNCE_TIME 200000 //200 ms
 
 ssd1306_t ssd;
 volatile bool led_green_state = false;
 volatile bool led_blue_state = false;
+static volatile uint32_t last_time_buttonA = 0;
+static volatile uint32_t last_time_buttonB = 0;
 
 const bool number_patterns[10][NUM_PIXELS] = { 
     {1, 1, 1, 1, 1,
@@ -99,23 +103,26 @@ void update_display(const char *msg) {
 }
 
 void button_callback(uint gpio, uint32_t events) {
-    if (gpio == BUTTON_A) {
+    uint32_t current_time = to_us_since_boot(get_absolute_time());
+    if (gpio == BUTTON_A && (current_time - last_time_buttonA > DEBOUNCE_TIME)) {
+        last_time_buttonA = current_time;
         led_green_state = !led_green_state;
         gpio_put(LED_RGB_GREEN, led_green_state);
         printf("Botão A pressionado. LED Verde: %s\n", led_green_state ? "Ligado" : "Desligado");
-        update_display(led_green_state ? "LED Verde: LIGADO" : "LED Verde: DESLIGADO");
-    } else if (gpio == BUTTON_B) {
+        update_display(led_green_state ? "LED Verde:     LIGADO" : "LED Verde:     DESLIGADO");
+    } else if (gpio == BUTTON_B && (current_time - last_time_buttonB > DEBOUNCE_TIME)) {
+        last_time_buttonB = current_time;
         led_blue_state = !led_blue_state;
         gpio_put(LED_RGB_BLUE, led_blue_state);
         printf("Botão B pressionado. LED Azul: %s\n", led_blue_state ? "Ligado" : "Desligado");
-        update_display(led_blue_state ? "LED Azul: LIGADO" : "LED Azul: DESLIGADO");
+        update_display(led_blue_state ? "LED Azul:      LIGADO" : "LED Azul:      DESLIGADO");
     }
 }
 
 void set_led_matrix(uint8_t number, uint8_t r, uint8_t g, uint8_t b) {
     if (number >= 0 && number <= 9) {
         for (int i = 0; i < NUM_PIXELS; i++) {
-            put_pixel(number_patterns[number][i] ? urgb_u32(0, 100, 0) : 0);
+            put_pixel(number_patterns[number][i] ? urgb_u32(100, 0, 0) : 0);
         }
     }
 }
