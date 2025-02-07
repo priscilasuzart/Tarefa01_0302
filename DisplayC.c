@@ -167,7 +167,8 @@ int main() {
     printf("Aguardando entrada do usuário...\n");
 
     while (1) {
-        int c = getchar();  // Bloqueia até receber entrada
+        int c = getchar_timeout_us(1000000); // Timeout de 1 segundo
+        if (c == PICO_ERROR_TIMEOUT) continue;
 
         printf("Recebido: %c\n", c);
         char str[2] = {c, '\0'};
